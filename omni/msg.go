@@ -82,7 +82,7 @@ func (m *genmsg) serialize(c cipher.Block) []byte {
 	binary.Write(buf, binary.LittleEndian, m.reserved)
 	data := m.Data
 	if c != nil {
-		data = m.encrypt(c)
+		//data = m.encrypt(c)
 	}
 	binary.Write(buf, binary.LittleEndian, data)
 	return buf.Bytes()
