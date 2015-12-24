@@ -24,5 +24,12 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("SysINFO %+v\n", si)
-	fmt.Printf("SysINFO %s\n", string(si.LocalPhoneNumber[:]))
+	fmt.Printf("Phone '%s'\n", string(si.LocalPhoneNumber[:]))
+
+	st, err := c.GetSystemStatus()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("SysStatus %+v\n", st)
+
 }

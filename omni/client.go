@@ -73,6 +73,7 @@ func NewClient(addr string, key string) (*Client, error) {
 		SeqNum: client.nextSeqNum(),
 		Type:   ClientReqSecureConnection,
 		Data:   client.sessionID,
+		//Data: []byte("blah"),
 	}
 	err = client.Send(verify)
 	if err != nil {
@@ -104,7 +105,7 @@ func (c *Client) GetSystemInformation() (SystemInfo, error) {
 	if err != nil {
 		return SystemInfo{}, fmt.Errorf("Faile dto send - %s", err.Error())
 	}
-	msg, err := c.Receive()
+	msg, err := c.ReceiveMsg()
 	if err != nil {
 		return SystemInfo{}, fmt.Errorf("Failed to receive system info %s", err.Error())
 	}
@@ -121,6 +122,36 @@ func (c *Client) GetSystemInformation() (SystemInfo, error) {
 	return si, err
 }
 
+func (c *Client) GetSystemStatus() (SystemStatus, error) {
+	seqNum := c.nextSeqNum()
+	data := msgReqSystemStatus.serialize(c, seqNum)
+	err := c.Send(genmsg{
+		SeqNum: seqNum,
+		Type:   AppDataMsg,
+		Data:   data,
+	})
+	if err != nil {
+		return SystemStatus{}, fmt.Errorf("Faile dto send - %s", err.Error())
+	}
+	msg, err := c.ReceiveMsg()
+	if err != nil {
+		return SystemStatus{}, fmt.Errorf("Failed to receive system info %s", err.Error())
+	}
+	fmt.Printf("sysinfo %+v\n", msg)
+	buf := bytes.NewBuffer(msg.Data)
+	si := SystemStatus{}
+
+	err = binary.Read(buf, binary.LittleEndian, &si.DateValid)
+	err = binary.Read(buf, binary.LittleEndian, &si.Year)
+	err = binary.Read(buf, binary.LittleEndian, &si.Month)
+	err = binary.Read(buf, binary.LittleEndian, &si.Day)
+	err = binary.Read(buf, binary.LittleEndian, &si.DayOfWeek)
+	err = binary.Read(buf, binary.LittleEndian, &si.Hour)
+	err = binary.Read(buf, binary.LittleEndian, &si.Minute)
+	err = binary.Read(buf, binary.LittleEndian, &si.Second)
+
+	return si, nil
+}
 func (c *Client) nextSeqNum() uint16 {
 	next := c.seqNum
 	c.seqNum++
@@ -151,6 +182,14 @@ func parseKey(key string) (sessionkey, error) {
 		return sessionkey{}, fmt.Errorf("Key %s must be 16 bytes long", key)
 	}
 	return sessionkey(keyBytes), nil
+}
+
+func (c *Client) ReceiveMsg() (*appmsg, error) {
+	gmsg, err := c.Receive()
+	if err != nil {
+		return nil, err
+	}
+	return deserializeAppMsg(c, bytes.NewBuffer(gmsg.Data))
 }
 
 func (c *Client) Receive() (*genmsg, error) {

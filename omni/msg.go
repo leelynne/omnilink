@@ -54,6 +54,13 @@ var ReqSystemInfoMsg = appmsg{
 	CRCLeast: 0x80,
 	CRCMost:  0x5E,
 }
+var msgReqSystemStatus = appmsg{
+	Start:    appMsgStart,
+	Length:   0x01,
+	Type:     0x18,
+	CRCLeast: 0x01,
+	CRCMost:  0x9A,
+}
 
 // genmsg is the generic message format (non-application)
 type genmsg struct {
@@ -82,7 +89,7 @@ func (m *genmsg) serialize(c cipher.Block) []byte {
 	binary.Write(buf, binary.LittleEndian, m.reserved)
 	data := m.Data
 	if c != nil {
-		//data = m.encrypt(c)
+		data = m.encrypt(c)
 	}
 	binary.Write(buf, binary.LittleEndian, data)
 	return buf.Bytes()
@@ -118,9 +125,9 @@ func (m *genmsg) decrypt(b cipher.Block) {
 	binary.LittleEndian.PutUint16(seqBytes[:], m.SeqNum)
 	for i := 0; i < len(m.Data); i += 16 {
 		end := i + 16
+		b.Decrypt(m.Data[i:end], m.Data[i:end])
 		m.Data[i] ^= seqBytes[0]
 		m.Data[i+1] ^= seqBytes[1]
-		b.Decrypt(m.Data[i:end], m.Data[i:end])
 	}
 }
 
@@ -159,8 +166,28 @@ func (m *appmsg) serialize(c *Client, seqNum uint16) []byte {
 	return buf.Bytes()
 }
 
-func (m *appmsg) deserialize(c *Client, buf io.Reader) (*appmsg, error) {
-	return nil, nil
+func deserializeAppMsg(c *Client, buf io.Reader) (*appmsg, error) {
+	m := appmsg{}
+	err := binary.Read(buf, binary.LittleEndian, &m.Start)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &m.Length)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Read(buf, binary.LittleEndian, &m.Type)
+	if err != nil {
+		return nil, err
+	}
+	w := &bytes.Buffer{}
+	_, err = io.CopyN(w, buf, int64(m.Length))
+
+	if err != nil {
+		return nil, err
+	}
+	m.Data = w.Bytes()
+	return &m, nil
 }
 
 type SystemInfo struct {
@@ -169,4 +196,15 @@ type SystemInfo struct {
 	MinorVerison     uint8
 	Revesion         uint8
 	LocalPhoneNumber [25]byte
+}
+
+type SystemStatus struct {
+	DateValid uint8
+	Year      uint8
+	Month     uint8
+	Day       uint8
+	DayOfWeek uint8
+	Hour      uint8
+	Minute    uint8
+	Second    uint8
 }
