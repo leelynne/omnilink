@@ -1,9 +1,11 @@
 package omni
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/leelynne/omnilink/omni/proto"
 )
@@ -30,70 +32,58 @@ func NewClient(addr string, key string) (*Client, error) {
 	}, nil
 }
 
-/*
-func (c *Client) GetSystemInformation() (SystemInfo, error) {
+type SystemInfo struct {
+	ModelNumber      uint8
+	MajorVersion     uint8
+	MinorVerison     uint8
+	Revesion         uint8
+	LocalPhoneNumber [25]byte
 }
 
+type SystemStatus struct {
+	DateValid uint8
+	Year      uint8
+	Month     uint8
+	Day       uint8
+	DayOfWeek uint8
+	Hour      uint8
+	Minute    uint8
+	Second    uint8
+}
 
 func (c *Client) GetSystemInformation() (SystemInfo, error) {
-	seqNum := c.nextSeqNum()
-	data := ReqSystemInfoMsg.serialize(c, seqNum)
-	err := c.Send(genmsg{
-		SeqNum: seqNum,
-		Type:   AppDataMsg,
-		Data:   data,
-	})
-	if err != nil {
-		return SystemInfo{}, fmt.Errorf("Faile dto send - %s", err.Error())
-	}
-	msg, err := c.ReceiveMsg()
-	if err != nil {
-		return SystemInfo{}, fmt.Errorf("Failed to receive system info %s", err.Error())
-	}
-	fmt.Printf("sysinfo %+v\n", msg)
-	buf := bytes.NewBuffer(msg.Data)
 	si := SystemInfo{}
+	m := &proto.Msg{Type: proto.MsgReqSystemInfo}
 
-	err = binary.Read(buf, binary.LittleEndian, &si.ModelNumber)
-	err = binary.Read(buf, binary.LittleEndian, &si.MajorVersion)
-	err = binary.Read(buf, binary.LittleEndian, &si.MinorVerison)
-	err = binary.Read(buf, binary.LittleEndian, &si.Revesion)
-	err = binary.Read(buf, binary.LittleEndian, &si.LocalPhoneNumber)
+	resp, err := c.get(m)
+	if err != nil {
+		return si, nil
+	}
 
+	err = binary.Read(resp, binary.LittleEndian, &si)
 	return si, err
 }
 
-func (c *Client) GetSystemStatus() (SystemStatus, error) {
-	seqNum := c.nextSeqNum()
-	data := msgReqSystemStatus.serialize(c, seqNum)
-	err := c.Send(genmsg{
-		SeqNum: seqNum,
-		Type:   AppDataMsg,
-		Data:   data,
-	})
+func (c *Client) get(m *proto.Msg) (*proto.Msg, error) {
+	err := c.conn.Write(m, time.Second*10)
 	if err != nil {
-		return SystemStatus{}, fmt.Errorf("Faile dto send - %s", err.Error())
+		return nil, err
 	}
-	msg, err := c.ReceiveMsg()
-	if err != nil {
-		return SystemStatus{}, fmt.Errorf("Failed to receive system info %s", err.Error())
-	}
-	fmt.Printf("sysinfo %+v\n", msg)
-	buf := bytes.NewBuffer(msg.Data)
-	si := SystemStatus{}
-
-	err = binary.Read(buf, binary.LittleEndian, &si.DateValid)
-	err = binary.Read(buf, binary.LittleEndian, &si.Year)
-	err = binary.Read(buf, binary.LittleEndian, &si.Month)
-	err = binary.Read(buf, binary.LittleEndian, &si.Day)
-	err = binary.Read(buf, binary.LittleEndian, &si.DayOfWeek)
-	err = binary.Read(buf, binary.LittleEndian, &si.Hour)
-	err = binary.Read(buf, binary.LittleEndian, &si.Minute)
-	err = binary.Read(buf, binary.LittleEndian, &si.Second)
-
-	return si, nil
+	return c.conn.Read(time.Second * 20)
 }
-*/
+
+func (c *Client) GetSystemStatus() (SystemStatus, error) {
+	st := SystemStatus{}
+	m := &proto.Msg{Type: proto.MsgReqSystemStatus}
+
+	resp, err := c.get(m)
+	if err != nil {
+		return st, nil
+	}
+	err = binary.Read(resp, binary.LittleEndian, &st)
+	return st, err
+}
+
 func parseKey(key string) (proto.StaticKey, error) {
 	hexOnly := strings.Replace(key, "-", "", -1)
 	keyBytes, err := hex.DecodeString(hexOnly)

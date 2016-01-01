@@ -6,9 +6,7 @@ import (
 	"crypto/cipher"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"net"
-	"os"
 	"sync"
 	"time"
 )
@@ -50,7 +48,7 @@ type conn struct {
 
 // NewConnection will create a new connection and session with the controller
 func NewConnection(addr string, key StaticKey) (Conn, error) {
-	logger := log.New(os.Stdout, "connection: ", log.LstdFlags)
+	//logger := log.New(os.Stdout, "connection: ", log.LstdFlags)
 	nconn, err := net.DialTimeout("tcp", addr, time.Duration(10*time.Second))
 	if err != nil {
 		return nil, ConnError{Op: "dial", Addr: addr, Err: err}
@@ -232,21 +230,22 @@ func (c *conn) recvPacket(timeout time.Time) (packet, error) {
 	case msgControllerCannotStartNewSession, msgControllerSessionTerminated:
 	case msgControllerAckNewSession:
 		dataLen = 7
-	case msgControllerAckSecureConnection, msgAppData:
+	case msgControllerAckSecureConnection:
 		encrypted = true
-	default:
-		return p, fmt.Errorf("Unknown message type %d", p.msgType)
-	}
-	if encrypted {
+		dataLen = 5 + padLength(5)
+	case msgAppData:
+		encrypted = true
 		// Read the first block of the encrypted data in order to get size of the message
 		p.data, err = c.getBytes(blockSize, timeout)
 		if err != nil {
 			return p, err
 		}
 		msgHeader := p.decrypt(c.cipher)
-		unencryptedLength := int(msgHeader[1:2][0])  // Length of unencrypted data + message type
-		totalLength := unencryptedLength + 4         // Length + start char, length, and crc fields
-		dataLen = padLength(totalLength) - blockSize // Subtract what was already read
+		unencryptedLength := int(msgHeader[1:2][0])                // Length of unencrypted data + message type
+		totalLength := unencryptedLength + 4                       // Length + start char, length, and crc fields
+		dataLen = totalLength + padLength(totalLength) - blockSize // Subtract what was already read
+	default:
+		return p, fmt.Errorf("Unknown message type %d", p.msgType)
 	}
 	data, err := c.getBytes(dataLen, timeout)
 	if err != nil {
@@ -265,7 +264,6 @@ func (c *conn) getBytes(numBytes int, timeout time.Time) ([]byte, error) {
 	}
 	buf := make([]byte, numBytes)
 	c.nconn.SetReadDeadline(timeout)
-	// Grab at least the header header
 	read := 0
 	for read < numBytes {
 		n, err := c.nconn.Read(buf)
