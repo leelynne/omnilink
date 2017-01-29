@@ -41,14 +41,20 @@ type SystemInfo struct {
 }
 
 type SystemStatus struct {
-	DateValid uint8
-	Year      uint8
-	Month     uint8
-	Day       uint8
-	DayOfWeek uint8
-	Hour      uint8
-	Minute    uint8
-	Second    uint8
+	DateValid   uint8
+	Year        uint8
+	Month       uint8
+	Day         uint8
+	DayOfWeek   uint8
+	Hour        uint8
+	Minute      uint8
+	Second      uint8
+	Daylight    uint8
+	SunriseHour uint8
+	SunriseMin  uint8
+	SunsetHour  uint8
+	SunsetMin   uint8
+	Battery     uint8
 }
 
 func (c *Client) GetSystemInformation() (SystemInfo, error) {
