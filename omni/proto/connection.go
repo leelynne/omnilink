@@ -9,6 +9,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type StaticKey []byte
@@ -125,12 +127,12 @@ func (c *conn) Read(timeout time.Duration) (*Msg, error) {
 	defer c.mu.Unlock()
 
 	if !c.ok() {
-		return nil, c.err
+		return nil, errors.Wrap(c.err, "Connection not ok")
 	}
 
 	p, err := c.recvPacket(time.Now().Add(timeout))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to receive packet")
 	}
 
 	return fromPacket(p), nil

@@ -9,10 +9,14 @@ import (
 type AppMsgType uint8
 
 const (
-	appMsgStart        byte       = 0x21
-	haiPoly            uint16     = 0xA001
-	MsgReqSystemInfo   AppMsgType = 0x16
-	MsgReqSystemStatus AppMsgType = 0x18
+	appMsgStart                byte       = 0x21
+	haiPoly                    uint16     = 0xA001
+	MsgReqSystemInfo           AppMsgType = 0x16
+	MsgReqSystemStatus         AppMsgType = 0x18
+	MsgReqSystemTroubles       AppMsgType = 0x1A
+	MsgReqSystemFeatures       AppMsgType = 0x1C
+	MsgReqSystemFormats        AppMsgType = 0x28
+	MsgReqObjectTypeCapacities AppMsgType = 0x1E
 )
 
 // Msg is the application data message

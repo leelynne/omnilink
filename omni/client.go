@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/leelynne/omnilink/omni/proto"
+	"github.com/pkg/errors"
 )
 
 // Client is an Omni-link II client
@@ -32,31 +33,6 @@ func NewClient(addr string, key string) (*Client, error) {
 	}, nil
 }
 
-type SystemInfo struct {
-	ModelNumber      uint8
-	MajorVersion     uint8
-	MinorVerison     uint8
-	Revesion         uint8
-	LocalPhoneNumber [25]byte
-}
-
-type SystemStatus struct {
-	DateValid   uint8
-	Year        uint8
-	Month       uint8
-	Day         uint8
-	DayOfWeek   uint8
-	Hour        uint8
-	Minute      uint8
-	Second      uint8
-	Daylight    uint8
-	SunriseHour uint8
-	SunriseMin  uint8
-	SunsetHour  uint8
-	SunsetMin   uint8
-	Battery     uint8
-}
-
 func (c *Client) GetSystemInformation() (SystemInfo, error) {
 	si := SystemInfo{}
 	m := &proto.Msg{Type: proto.MsgReqSystemInfo}
@@ -70,14 +46,6 @@ func (c *Client) GetSystemInformation() (SystemInfo, error) {
 	return si, err
 }
 
-func (c *Client) get(m *proto.Msg) (*proto.Msg, error) {
-	err := c.conn.Write(m, time.Second*10)
-	if err != nil {
-		return nil, err
-	}
-	return c.conn.Read(time.Second * 20)
-}
-
 func (c *Client) GetSystemStatus() (SystemStatus, error) {
 	st := SystemStatus{}
 	m := &proto.Msg{Type: proto.MsgReqSystemStatus}
@@ -86,8 +54,68 @@ func (c *Client) GetSystemStatus() (SystemStatus, error) {
 	if err != nil {
 		return st, nil
 	}
+
 	err = binary.Read(resp, binary.LittleEndian, &st)
 	return st, err
+}
+
+func (c *Client) GetSystemTroubles() (SystemTroubles, error) {
+	m := &proto.Msg{Type: proto.MsgReqSystemTroubles}
+
+	resp, err := c.get(m)
+	if err != nil {
+		return SystemTroubles{}, errors.Wrap(err, "Failed to get system troubles")
+	}
+
+	numTroubles := len(resp.Data) - 1
+	troubles := make([]SystemTrouble, numTroubles)
+	fmt.Printf("Type %x\n", resp.Type)
+	for i := range troubles {
+		troubles[i] = SystemTrouble(resp.Data[i])
+	}
+	return SystemTroubles{
+		Troubles: troubles,
+	}, nil
+}
+
+func (c *Client) GetSystemFeatures() (SystemFeatures, error) {
+	m := &proto.Msg{Type: proto.MsgReqSystemFeatures}
+
+	resp, err := c.get(m)
+	if err != nil {
+		return SystemFeatures{}, errors.Wrap(err, "Failed to get system features")
+	}
+
+	numFeatures := len(resp.Data) - 1
+	features := make([]SystemFeature, numFeatures)
+	fmt.Printf("Type %x\n", resp.Type)
+	for i := range features {
+		features[i] = SystemFeature(resp.Data[i])
+	}
+	return SystemFeatures{
+		Features: features,
+	}, nil
+}
+
+func (c *Client) GetSystemFormats() (SystemFormats, error) {
+	m := &proto.Msg{Type: proto.MsgReqSystemFormats}
+
+	resp, err := c.get(m)
+	if err != nil {
+		return SystemFormats{}, errors.Wrap(err, "Failed to get system formats")
+	}
+	fmt.Printf("Type %x\n", resp.Type)
+	sf := SystemFormats{}
+	err = binary.Read(resp, binary.LittleEndian, &sf)
+	return sf, err
+}
+
+func (c *Client) get(m *proto.Msg) (*proto.Msg, error) {
+	err := c.conn.Write(m, time.Second*10)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to write")
+	}
+	return c.conn.Read(time.Second * 20)
 }
 
 func parseKey(key string) (proto.StaticKey, error) {

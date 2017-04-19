@@ -19,12 +19,14 @@ func main() {
 	c, err := omni.NewClient(fmt.Sprintf("%s:4369", endpoint), key)
 
 	if err != nil {
+		fmt.Printf("%+v\n", err)
 		panic(err)
 	}
 
 	logger.Printf("Connected!")
 	si, err := c.GetSystemInformation()
 	if err != nil {
+		fmt.Printf("%+v\n", err)
 		panic(err)
 	}
 	fmt.Printf("SysINFO %+v\n", si)
@@ -32,8 +34,30 @@ func main() {
 
 	st, err := c.GetSystemStatus()
 	if err != nil {
+		fmt.Printf("%+v\n", err)
 		panic(err)
 	}
 	fmt.Printf("SysSTATUS %+v\n", st)
+
+	tr, err := c.GetSystemTroubles()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		panic(err)
+	}
+	fmt.Printf("SysTroubles %+v\n", tr)
+
+	ftr, err := c.GetSystemFeatures()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		panic(err)
+	}
+	fmt.Printf("SysFeatures %+v\n", ftr)
+
+	form, err := c.GetSystemFormats()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		panic(err)
+	}
+	fmt.Printf("SysFormats %+v\n", form)
 
 }
