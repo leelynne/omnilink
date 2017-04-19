@@ -1,4 +1,4 @@
 # omnilink
-Go client library for the Omni-Link II Protocol 
+Go client library for the Omni-Link II Protocol
 
-Status: Just in the beginning stages.
+Status: API not stable.  Protocol support mostly finished.  Implements some of the request object functionality.
