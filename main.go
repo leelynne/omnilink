@@ -60,4 +60,18 @@ func main() {
 	}
 	fmt.Printf("SysFormats %+v\n", form)
 
+	otc, err := c.GetObjectTypeCapacity(omni.Area)
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		panic(err)
+	}
+	fmt.Printf("Capacity %+v\n", otc)
+
+	oprop, err := c.GetObjectProperties()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		panic(err)
+	}
+	fmt.Printf("Property %+v\n", oprop)
+
 }

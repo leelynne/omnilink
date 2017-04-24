@@ -69,7 +69,6 @@ func (c *Client) GetSystemTroubles() (SystemTroubles, error) {
 
 	numTroubles := len(resp.Data) - 1
 	troubles := make([]SystemTrouble, numTroubles)
-	fmt.Printf("Type %x\n", resp.Type)
 	for i := range troubles {
 		troubles[i] = SystemTrouble(resp.Data[i])
 	}
@@ -88,7 +87,6 @@ func (c *Client) GetSystemFeatures() (SystemFeatures, error) {
 
 	numFeatures := len(resp.Data) - 1
 	features := make([]SystemFeature, numFeatures)
-	fmt.Printf("Type %x\n", resp.Type)
 	for i := range features {
 		features[i] = SystemFeature(resp.Data[i])
 	}
@@ -104,10 +102,42 @@ func (c *Client) GetSystemFormats() (SystemFormats, error) {
 	if err != nil {
 		return SystemFormats{}, errors.Wrap(err, "Failed to get system formats")
 	}
-	fmt.Printf("Type %x\n", resp.Type)
+
 	sf := SystemFormats{}
 	err = binary.Read(resp, binary.LittleEndian, &sf)
 	return sf, err
+}
+
+func (c *Client) GetObjectTypeCapacity(t ObjectType) (ObjectTypeCapacities, error) {
+	m := &proto.Msg{
+		Type: proto.MsgReqObjectTypeCapacities,
+		Data: []byte{byte(t)},
+	}
+
+	resp, err := c.get(m)
+	if err != nil {
+		return ObjectTypeCapacities{}, errors.Wrapf(err, "Failed to get object type capacity for type %s", t)
+	}
+
+	otc := ObjectTypeCapacities{}
+	err = binary.Read(resp, binary.LittleEndian, &otc)
+	return otc, err
+}
+
+func (c *Client) GetObjectProperties() (ObjectProperties, error) {
+	m := &proto.Msg{
+		Type: proto.MsgReqObjectProperties,
+		Data: []byte{byte(Zone)},
+	}
+
+	resp, err := c.get(m)
+	if err != nil {
+		return ObjectProperties{}, errors.Wrap(err, "Failed to get object property")
+	}
+
+	otc := ObjectProperties{}
+	err = binary.Read(resp, binary.LittleEndian, &otc)
+	return otc, err
 }
 
 func (c *Client) get(m *proto.Msg) (*proto.Msg, error) {

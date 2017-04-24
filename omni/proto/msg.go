@@ -17,6 +17,7 @@ const (
 	MsgReqSystemFeatures       AppMsgType = 0x1C
 	MsgReqSystemFormats        AppMsgType = 0x28
 	MsgReqObjectTypeCapacities AppMsgType = 0x1E
+	MsgReqObjectProperties     AppMsgType = 0x20
 )
 
 // Msg is the application data message

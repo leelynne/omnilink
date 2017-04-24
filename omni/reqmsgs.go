@@ -5,12 +5,9 @@ package omni
 //go:generate stringer -type=TempFormat
 //go:generate stringer -type=TimeFormat
 //go:generate stringer -type=DateFormat
+//go:generate stringer -type=ObjectType
 
 type SystemTrouble uint8
-type SystemFeature uint8
-type TempFormat uint8
-type TimeFormat uint8
-type DateFormat uint8
 
 const (
 	Freeze SystemTrouble = 1 + iota
@@ -22,6 +19,9 @@ const (
 	Freeze2 // These are listed twice in spec
 	BatteryLow2
 )
+
+type SystemFeature uint8
+
 const (
 	NuVoConcerto SystemFeature = 1 + iota
 	NuVoEssentia
@@ -33,18 +33,46 @@ const (
 	Proficient
 	DSCSecurity
 )
+
+type TempFormat uint8
+
 const (
 	Fahrenheit TempFormat = 1 + iota
 	Celsius
 )
+
+type TimeFormat uint8
+
 const (
 	Twelve TimeFormat = 1 + iota
 	TwentyFour
 )
 
+type DateFormat uint8
+
 const (
 	MMDD DateFormat = 1 + iota
 	DDMM
+)
+
+type ObjectType uint8
+
+const (
+	Zone ObjectType = 1 + iota
+	Unit
+	Button
+	Code
+	Area
+	Thermostat
+	Message
+	AuxilarySensor
+	AudioSource
+	AudioZone
+	ExpansionEnclosure
+	Console
+	UserSetting
+	AccessControlReader
+	AccessControlLock
 )
 
 type SystemInfo struct {
@@ -86,8 +114,22 @@ type SystemFormats struct {
 }
 
 type ObjectTypeCapacities struct {
+	CapacityType ObjectType
+	CapacityMSB  uint8
+	CapacityLSB  uint8
 }
 
-func test() {
+type ObjectProperties struct {
+}
 
+type ObjectStatus struct {
+}
+
+type AudioSourceStatus struct {
+}
+
+type ZoneReadyStatus struct {
+}
+
+type ConnectedSecuritySystemStatus struct {
 }
