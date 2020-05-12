@@ -5,7 +5,6 @@ package omni
 //go:generate stringer -type=TempFormat
 //go:generate stringer -type=TimeFormat
 //go:generate stringer -type=DateFormat
-//go:generate stringer -type=ObjectType
 
 type SystemTrouble uint8
 
@@ -55,31 +54,11 @@ const (
 	DDMM
 )
 
-type ObjectType uint8
-
-const (
-	Zone ObjectType = 1 + iota
-	Unit
-	Button
-	Code
-	Area
-	Thermostat
-	Message
-	AuxilarySensor
-	AudioSource
-	AudioZone
-	ExpansionEnclosure
-	Console
-	UserSetting
-	AccessControlReader
-	AccessControlLock
-)
-
 type SystemInfo struct {
 	ModelNumber      uint8
 	MajorVersion     uint8
-	MinorVerison     uint8
-	Revesion         uint8
+	MinorVersion     uint8
+	Revision         uint8
 	LocalPhoneNumber [25]byte
 }
 
@@ -120,6 +99,7 @@ type ObjectTypeCapacities struct {
 }
 
 type ObjectProperties struct {
+	ObjectType uint8
 }
 
 type ObjectStatus struct {
@@ -132,4 +112,9 @@ type ZoneReadyStatus struct {
 }
 
 type ConnectedSecuritySystemStatus struct {
+}
+
+func omniTempToF(otemp uint8) float64 {
+	celsius := -40.0 + (float64(otemp) / 2.0)
+	return celsius*1.8 + 32
 }

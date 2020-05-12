@@ -16,6 +16,9 @@ import (
 type StaticKey []byte
 type sessionKey []byte
 
+// Conn is a stateful connection/session to the controller for sending application data messages.
+//
+// Multiple goroutines may invoke methods on a Conn simultaneously.
 type Conn interface {
 	Read(timeout time.Duration) (*Msg, error)
 	Write(m *Msg, timeout time.Duration) error
@@ -48,9 +51,8 @@ type conn struct {
 	closed       bool
 }
 
-// NewConnection will create a new connection and session with the controller
+// NewConnection will create a new connection and session with the controller.
 func NewConnection(addr string, key StaticKey) (Conn, error) {
-	//logger := log.New(os.Stdout, "connection: ", log.LstdFlags)
 	nconn, err := net.DialTimeout("tcp", addr, time.Duration(10*time.Second))
 	if err != nil {
 		return nil, ConnError{Op: "dial", Addr: addr, Err: err}
@@ -61,7 +63,7 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 		nconn:  nconn,
 		seqNum: 1,
 	}
-	newp := packet{
+	newp := &packet{
 		seqNum:  oconn.nextSeqNum(),
 		msgType: msgClientReqNewSession,
 	}
@@ -93,7 +95,7 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create client cipher - %s", err.Error())
 	}
-	secp := packet{
+	secp := &packet{
 		seqNum:  oconn.nextSeqNum(),
 		msgType: msgClientReqSecureConnection,
 		data:    as.SessionID[:],
@@ -135,7 +137,7 @@ func (c *conn) Read(timeout time.Duration) (*Msg, error) {
 		return nil, errors.Wrap(err, "Failed to receive packet")
 	}
 
-	return fromPacket(p), nil
+	return NewMsg(p), nil
 }
 
 func (c *conn) Write(m *Msg, timeout time.Duration) error {
@@ -146,13 +148,14 @@ func (c *conn) Write(m *Msg, timeout time.Duration) error {
 		return c.err
 	}
 
-	return c.sendPacket(c.makePacket(m), time.Now().Add(timeout))
+	return c.sendPacket(m.packet(c.nextSeqNum()), time.Now().Add(timeout))
 }
 
 // Close will close the connection. Close can be called multiple times.
 func (c *conn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if c.closed {
 		return nil
 	}
@@ -174,16 +177,6 @@ func (c *conn) ok() bool {
 	return true
 }
 
-func (c *conn) makePacket(m *Msg) packet {
-	plaintext := m.serialize()
-	p := packet{
-		seqNum:  c.nextSeqNum(),
-		msgType: msgAppData,
-		data:    plaintext,
-	}
-	return p
-}
-
 func (c *conn) nextSeqNum() uint16 {
 	next := c.seqNum
 	c.seqNum++
@@ -193,8 +186,8 @@ func (c *conn) nextSeqNum() uint16 {
 	return next
 }
 
-func (c *conn) sendPacket(p packet, timeout time.Time) error {
-	b := c.serializePacket(p)
+func (c *conn) sendPacket(p *packet, timeout time.Time) error {
+	b := p.serialize(c.cipher)
 	c.nconn.SetWriteDeadline(timeout)
 	for written := 0; written < len(b); {
 		n, err := c.nconn.Write(b[written:])
@@ -206,12 +199,12 @@ func (c *conn) sendPacket(p packet, timeout time.Time) error {
 	return nil
 }
 
-func (c *conn) recvPacket(timeout time.Time) (packet, error) {
+func (c *conn) recvPacket(timeout time.Time) (*packet, error) {
 	header, err := c.getBytes(4, timeout)
 	if err != nil {
-		return packet{}, err
+		return nil, err
 	}
-	p := packet{}
+	p := &packet{}
 	buf := bytes.NewBuffer(header)
 	err = binary.Read(buf, binary.LittleEndian, &p.seqNum)
 	if err != nil {
@@ -260,6 +253,7 @@ func (c *conn) recvPacket(timeout time.Time) (packet, error) {
 	return p, nil
 }
 
+// getBytes reads the specified number of bytes from the underlying connection
 func (c *conn) getBytes(numBytes int, timeout time.Time) ([]byte, error) {
 	if numBytes <= 0 {
 		return []byte{}, nil
@@ -275,19 +269,6 @@ func (c *conn) getBytes(numBytes int, timeout time.Time) ([]byte, error) {
 		read += n
 	}
 	return buf, nil
-}
-
-func (c *conn) serializePacket(p packet) []byte {
-	buf := &bytes.Buffer{}
-	binary.Write(buf, binary.LittleEndian, p.seqNum)
-	binary.Write(buf, binary.LittleEndian, p.msgType)
-	binary.Write(buf, binary.LittleEndian, p.reserved)
-	data := p.data
-	if c.cipher != nil {
-		data = p.encrypt(c.cipher)
-	}
-	binary.Write(buf, binary.LittleEndian, data)
-	return buf.Bytes()
 }
 
 func createSessionKey(key StaticKey, sessionID []byte) (sessionKey, error) {

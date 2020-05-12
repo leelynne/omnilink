@@ -3,7 +3,7 @@ package proto
 import (
 	"bytes"
 	"encoding/binary"
-	"sync"
+	"io"
 )
 
 type AppMsgType uint8
@@ -18,29 +18,48 @@ const (
 	MsgReqSystemFormats        AppMsgType = 0x28
 	MsgReqObjectTypeCapacities AppMsgType = 0x1E
 	MsgReqObjectProperties     AppMsgType = 0x20
+	MsgReqObjectStatus         AppMsgType = 0x22
 )
 
-// Msg is the application data message
+// Msg is the raw application data message
 type Msg struct {
 	Type     AppMsgType
 	Data     []byte
 	crcRecvd []byte
-	mu       sync.Mutex
-	buf      *bytes.Buffer
 }
 
-func (m *Msg) Read(p []byte) (n int, err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.buf == nil {
-		m.buf = bytes.NewBuffer(m.Data)
+// NewMsg creates a Msg from a packet received by a connection.
+func NewMsg(p *packet) *Msg {
+	m := &Msg{}
+	buf := bytes.NewBuffer(p.data)
+	var start [1]byte
+	binary.Read(buf, binary.LittleEndian, &start)
+	var dataLen uint8
+	binary.Read(buf, binary.LittleEndian, &dataLen)
+	binary.Read(buf, binary.LittleEndian, &m.Type)
+	rest := buf.Bytes()
+	m.Data = rest[0:dataLen]
+	m.crcRecvd = rest[dataLen : dataLen+2]
+	return m
+}
+
+// Reader returns an io.Reader from the underlying message data.
+func (m *Msg) Reader() io.Reader {
+	return bytes.NewBuffer(m.Data)
+}
+
+// Packet creates a packet suitable for sending over a connection.
+func (m *Msg) packet(seqNum uint16) *packet {
+	plaintext := m.serialize()
+	p := packet{
+		seqNum:  seqNum,
+		msgType: msgAppData,
+		data:    plaintext,
 	}
-	return m.buf.Read(p)
+	return &p
 }
 
 func (m *Msg) serialize() []byte {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	buf := &bytes.Buffer{}
 	binary.Write(buf, binary.LittleEndian, appMsgStart)
 	binary.Write(buf, binary.LittleEndian, uint8(len(m.Data)+1))
@@ -70,18 +89,4 @@ func (m *Msg) crc() []byte {
 	out := make([]byte, 2)
 	binary.LittleEndian.PutUint16(out, crc)
 	return out
-}
-
-func fromPacket(p packet) *Msg {
-	m := &Msg{}
-	buf := bytes.NewBuffer(p.data)
-	var start [1]byte
-	binary.Read(buf, binary.LittleEndian, &start)
-	var len uint8
-	binary.Read(buf, binary.LittleEndian, &len)
-	binary.Read(buf, binary.LittleEndian, &m.Type)
-	rest := buf.Bytes()
-	m.Data = rest[0:len]
-	m.crcRecvd = rest[len : len+2]
-	return m
 }

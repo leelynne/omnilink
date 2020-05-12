@@ -60,18 +60,29 @@ func main() {
 	}
 	fmt.Printf("SysFormats %+v\n", form)
 
-	otc, err := c.GetObjectTypeCapacity(omni.Area)
+	otc, err := c.GetObjectTypeCapacity(omni.Zone)
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 		panic(err)
 	}
-	fmt.Printf("Capacity %+v\n", otc)
+	fmt.Printf("Capacity %+v\n\n", otc)
 
-	oprop, err := c.GetObjectProperties()
+	thermProps, numFound, err := c.GetObjectProperties(omni.Thermostat)
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 		panic(err)
 	}
-	fmt.Printf("Property %+v\n", oprop)
+	if tprops, ok := thermProps.([]omni.ThermostatProperties); ok {
+		for _, tprop := range tprops {
+			fmt.Printf("ThermoName %s\n", string(tprop.Name[:]))
+		}
+	}
+
+	ostat, err := c.GetObjectStatus(omni.Thermostat, numFound)
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		panic(err)
+	}
+	fmt.Printf("Status %+v\n", ostat)
 
 }
