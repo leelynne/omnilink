@@ -141,7 +141,7 @@ func (c *conn) Read(timeout time.Duration) (*Msg, error) {
 		return nil, errors.Wrap(err, "Failed to receive packet")
 	}
 
-	return NewMsg(p), nil
+	return NewMsg(p)
 }
 
 func (c *conn) Write(m *Msg, timeout time.Duration) error {

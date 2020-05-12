@@ -68,7 +68,7 @@ func (c *Client) GetSystemTroubles() (SystemTroubles, error) {
 		return SystemTroubles{}, errors.Wrap(err, "Failed to get system troubles")
 	}
 
-	numTroubles := len(resp.Data) - 1
+	numTroubles := len(resp.Data)
 	troubles := make([]SystemTrouble, numTroubles)
 	for i := range troubles {
 		troubles[i] = SystemTrouble(resp.Data[i])
@@ -86,7 +86,7 @@ func (c *Client) GetSystemFeatures() (SystemFeatures, error) {
 		return SystemFeatures{}, errors.Wrap(err, "Failed to get system features")
 	}
 
-	numFeatures := len(resp.Data) - 1
+	numFeatures := len(resp.Data)
 
 	features := make([]SystemFeature, numFeatures)
 	for i := range features {

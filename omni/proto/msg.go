@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+
+	"github.com/pkg/errors"
 )
 
 type AppMsgType uint8
@@ -23,24 +25,39 @@ const (
 
 // Msg is the raw application data message
 type Msg struct {
-	Type     AppMsgType
-	Data     []byte
-	crcRecvd []byte
+	Type AppMsgType
+	Data []byte
 }
 
 // NewMsg creates a Msg from a packet received by a connection.
-func NewMsg(p *packet) *Msg {
+func NewMsg(p *packet) (*Msg, error) {
 	m := &Msg{}
 	buf := bytes.NewBuffer(p.data)
 	var start [1]byte
 	binary.Read(buf, binary.LittleEndian, &start)
+
+	var crc, expectedCRC uint16
 	var dataLen uint8
 	binary.Read(buf, binary.LittleEndian, &dataLen)
+	crc = updateCRC(crc, dataLen)
 	binary.Read(buf, binary.LittleEndian, &m.Type)
-	rest := buf.Bytes()
-	m.Data = rest[0:dataLen]
-	m.crcRecvd = rest[dataLen : dataLen+2]
-	return m
+	crc = updateCRC(crc, byte(m.Type))
+	m.Data = make([]byte, dataLen-1, dataLen-1) // Data Length includes one byte for the Type field.
+	err := binary.Read(buf, binary.LittleEndian, m.Data)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to read Data from packet")
+	}
+	crc = updateCRC(crc, m.Data...)
+
+	err = binary.Read(buf, binary.LittleEndian, &expectedCRC)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to read CRC from packet")
+	}
+
+	if crc != expectedCRC {
+		return nil, errors.Errorf("CRC mismatch on received packet")
+	}
+	return m, nil
 }
 
 // Reader returns an io.Reader from the underlying message data.
@@ -70,13 +87,14 @@ func (m *Msg) serialize() []byte {
 	return out
 }
 
-func (m *Msg) crc() []byte {
-	buf := &bytes.Buffer{}
-	binary.Write(buf, binary.LittleEndian, uint8(len(m.Data)+1))
-	binary.Write(buf, binary.LittleEndian, m.Type)
-	binary.Write(buf, binary.LittleEndian, m.Data)
-	var crc uint16
-	for _, b := range buf.Bytes() {
+func (m *Msg) crc() uint16 {
+	crc := updateCRC(0, uint8(len(m.Data)+1))
+	crc = updateCRC(crc, byte(m.Type))
+	return updateCRC(crc, m.Data...)
+}
+
+func updateCRC(crc uint16, in ...byte) uint16 {
+	for _, b := range in {
 		crc ^= uint16(b)
 		for i := 0; i < 8; i++ {
 			flag := (crc & 1) == 1
@@ -86,7 +104,5 @@ func (m *Msg) crc() []byte {
 			}
 		}
 	}
-	out := make([]byte, 2)
-	binary.LittleEndian.PutUint16(out, crc)
-	return out
+	return crc
 }
