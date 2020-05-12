@@ -209,19 +209,19 @@ func (c *Client) GetObjectStatus(objectType ObjectType, numObjects int) (interfa
 	return out, err
 }
 
-// unmarshalMessage unpacks an application data message into a struct
-func unmarshalMessage(msg *proto.Msg, data interface{}) error {
-	reader := msg.Reader()
-	return binary.Read(reader, binary.LittleEndian, data)
-}
-
-// sendMessage sends an application data message to the controller and waits and returns a response
+// sendMessage sends an application data message to the controller and returns a response
 func (c *Client) sendMessage(m *proto.Msg) (*proto.Msg, error) {
 	err := c.conn.Write(m, time.Second*10)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to write")
 	}
 	return c.conn.Read(time.Second * 20)
+}
+
+// unmarshalMessage unpacks an application data message into a struct
+func unmarshalMessage(msg *proto.Msg, data interface{}) error {
+	reader := msg.Reader()
+	return binary.Read(reader, binary.LittleEndian, data)
 }
 
 func parseKey(key string) (proto.StaticKey, error) {

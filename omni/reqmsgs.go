@@ -15,8 +15,8 @@ const (
 	PhoneLine
 	DigitalCommunicator
 	Fuse
-	Freeze2 // These are listed twice in spec
-	BatteryLow2
+	Freeze2
+	BatteryLow2 // Listed twice in spec
 )
 
 type SystemFeature uint8

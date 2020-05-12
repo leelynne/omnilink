@@ -63,6 +63,8 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 		nconn:  nconn,
 		seqNum: 1,
 	}
+
+	// New Session
 	newp := &packet{
 		seqNum:  oconn.nextSeqNum(),
 		msgType: msgClientReqNewSession,
@@ -95,6 +97,8 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create client cipher - %s", err.Error())
 	}
+
+	// Secure connection
 	secp := &packet{
 		seqNum:  oconn.nextSeqNum(),
 		msgType: msgClientReqSecureConnection,
@@ -236,8 +240,9 @@ func (c *conn) recvPacket(timeout time.Time) (*packet, error) {
 			return p, err
 		}
 		msgHeader := p.decrypt(c.cipher)
-		unencryptedLength := int(msgHeader[1:2][0])                // Length of unencrypted data + message type
-		totalLength := unencryptedLength + 4                       // Length + start char, length, and crc fields
+		// Figure out the total length of the encrypted message
+		unpaddedLength := int(msgHeader[1])                        // Length of unpadded/unencrypted data section
+		totalLength := unpaddedLength + 5                          // start char, length, type, and crc fields
 		dataLen = totalLength + padLength(totalLength) - blockSize // Subtract what was already read
 	default:
 		return p, fmt.Errorf("Unknown message type %d", p.msgType)
