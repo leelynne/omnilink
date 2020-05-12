@@ -95,8 +95,8 @@ func (p *packet) serialize(cb cipher.Block) []byte {
 	return buf.Bytes()
 }
 
-// deserialize unmarshals data into the given interface. It does not perform decryption.
-func (p *packet) deserialize(v interface{}) error {
+// unmarshal reads message data into the given interface via encoding/binary.
+func (p *packet) unmarshal(v interface{}) error {
 	r := bytes.NewBuffer(p.data)
 	return binary.Read(r, binary.LittleEndian, v)
 }

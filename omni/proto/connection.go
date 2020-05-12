@@ -83,7 +83,7 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 		return nil, fmt.Errorf("Could not establish new session with controller")
 	}
 	as := ackNewSession{}
-	err = ackSessionp.deserialize(&as)
+	err = ackSessionp.unmarshal(&as)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 		return nil, fmt.Errorf("Client generated wrong session key")
 	}
 	sec := ackSecureSession{}
-	err = ackSecurep.deserialize(&sec)
+	err = ackSecurep.unmarshal(&sec)
 	if err != nil {
 		return nil, err
 	}
