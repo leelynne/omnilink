@@ -88,6 +88,7 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 		return nil, err
 	}
 
+	oconn.protoVersion = as.ProtoVersion
 	oconn.sessionKey, err = createSessionKey(key, as.SessionID[:])
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create session key - %s", err)
@@ -97,6 +98,7 @@ func NewConnection(addr string, key StaticKey) (Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create client cipher - %s", err.Error())
 	}
+	fmt.Printf("Proto: %d\n", as.ProtoVersion)
 
 	// Secure connection
 	secp := &packet{

@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Client is an Omni-link II client
+// Client is an Omni-link II client.
 type Client struct {
 	Addr string // IP:Port
 	conn proto.Conn
